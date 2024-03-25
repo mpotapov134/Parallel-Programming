@@ -16,6 +16,10 @@ void fill_A(double* matrix, int N);
 
 void fill_b(double* vect, int N);
 
+void fill_A_part(double* A_part, int N, int line_count, int displ);
+
+void fill_b_part(double* b_part, int N, int line_count, int displ);
+
 void calc_counts(int* line_counts, int world_size, int num_elements);
 
 void calc_displs(int* displs, int* send_counts, int world_size);

@@ -42,6 +42,20 @@ void fill_b(double* vect, int N) {
     }
 }
 
+void fill_A_part(double* A_part, int N, int line_count, int displ) {
+    for (int i = 0; i < line_count; i++) {
+        for (int j = 0; j < N; j++) {
+            A_part[i * N + j] = (j == i + displ) ? 2 : 1;
+        }
+    }
+}
+
+void fill_b_part(double* b_part, int N, int line_count, int displ) {
+    for (int i = 0; i < line_count; i++) {
+        b_part[i] = N + 1;
+    }
+}
+
 void calc_counts(int* counts, int world_size, int num_elements) {
     int base_count = num_elements / world_size;
     int remainder = num_elements - base_count * world_size;
