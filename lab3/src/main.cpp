@@ -67,8 +67,21 @@ int main(int argc, char** argv) {
 
     MPI_Bcast(A_part.get(), num_rows_for_each * A_num_cols, MPI_DOUBLE, 0, cols_comm);
 
-    std::cout << rank << "\n";
-    print_matrix(A_part.get(), num_rows_for_each, A_num_cols);
+    int num_cols_for_each = B_num_cols / grid_num_cols;
+    std::unique_ptr<double> B_part(new double[B_num_rows * num_cols_for_each]);
+
+    if (coords_in_grid[0] == 0) { // Проверяем, что процесс находится в первой строке
+        MPI_Datatype mpi_vector;
+        MPI_Type_vector(B_num_rows, num_cols_for_each, B_num_cols, MPI_DOUBLE, &mpi_vector);
+        MPI_Type_create_resized(mpi_vector, 0, num_cols_for_each * sizeof(double), &mpi_vector);
+        MPI_Type_commit(&mpi_vector);
+
+        MPI_Scatter(B.get(), 1, mpi_vector, B_part.get(),
+            B_num_rows * num_cols_for_each, MPI_DOUBLE, 0, cols_comm);
+        MPI_Type_free(&mpi_vector);
+    }
+
+    MPI_Bcast(B_part.get(), B_num_rows * num_cols_for_each, MPI_DOUBLE, 0, rows_comm);
 
     MPI_Barrier(MPI_COMM_WORLD);
     MPI_Finalize();
