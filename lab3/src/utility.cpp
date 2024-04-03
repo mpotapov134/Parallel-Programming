@@ -32,7 +32,7 @@ void print_error(int err_code) {
 void fill_random(double *buffer, int size) {
     srand(clock());
     for (int i = 0; i < size; i++) {
-        buffer[i] = (double) (rand() % 1000) / 10;
+        buffer[i] = (double) (rand() % 100) / 10;
     }
 }
 

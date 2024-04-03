@@ -6,6 +6,18 @@
 
 #include "utility.h"
 
+void multiply(double *A_part, double *B_part, int A_part_rows, int A_part_cols,
+        int B_part_rows, int B_part_cols, double *C_part) {
+    memset(C_part, 0, sizeof(*C_part) * A_part_rows * B_part_cols);
+    for (int i = 0; i < A_part_rows; i++) {
+        for (int j = 0; j < B_part_rows; j++) {
+            for (int k = 0; k < B_part_cols; k++) {
+                C_part[i * B_part_cols + k] += A_part[i * A_part_cols + j] * B_part[j * B_part_cols + k];
+            }
+        }
+    }
+}
+
 int main(int argc, char** argv) {
     if (argc != 6) {
         std::cerr << "Incorrenct number of arguments.\n";
@@ -82,6 +94,9 @@ int main(int argc, char** argv) {
     }
 
     MPI_Bcast(B_part.get(), B_num_rows * num_cols_for_each, MPI_DOUBLE, 0, rows_comm);
+
+    std::unique_ptr<double> C_part(new double[num_rows_for_each * num_cols_for_each]);
+    multiply(A_part.get(), B_part.get(), num_rows_for_each, A_num_cols, B_num_rows, num_cols_for_each, C_part.get());
 
     MPI_Barrier(MPI_COMM_WORLD);
     MPI_Finalize();
