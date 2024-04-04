@@ -1,3 +1,4 @@
+#include <chrono>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -43,6 +44,17 @@ int main(int argc, char** argv) {
         MPI_Abort(MPI_COMM_WORLD, -1);
     }
 
+    std::unique_ptr<double> A, B;
+    if (rank == 0) {
+        A.reset(new double[A_num_rows * A_num_cols]);
+        B.reset(new double[B_num_rows * B_num_cols]);
+        fill_random(A.get(), A_num_rows * A_num_cols);
+        fill_random(B.get(), B_num_rows * B_num_cols);
+    }
+
+    std::chrono::high_resolution_clock clock;
+    auto start = clock.now();
+
     MPI_Comm grid_comm;
     int dims[2] = {grid_num_rows, grid_num_cols};
     int periods[2] = {0, 0};
@@ -60,14 +72,6 @@ int main(int argc, char** argv) {
     remain_dims[0] = 0;
     remain_dims[1] = 1;
     MPI_Cart_sub(grid_comm, remain_dims, &cols_comm);
-
-    std::unique_ptr<double> A, B;
-    if (rank == 0) {
-        A.reset(new double[A_num_rows * A_num_cols]);
-        B.reset(new double[B_num_rows * B_num_cols]);
-        fill_random(A.get(), A_num_rows * A_num_cols);
-        fill_random(B.get(), B_num_rows * B_num_cols);
-    }
 
     int num_rows_for_each = A_num_rows / grid_num_rows;
     std::unique_ptr<double> A_part(new double[num_rows_for_each * A_num_cols]);
@@ -123,6 +127,10 @@ int main(int argc, char** argv) {
     MPI_Gatherv(C_part.get(), num_rows_for_each * num_cols_for_each, MPI_DOUBLE, C.get(), recv_counts.get(),
         displs.get(), mpi_vector_C, 0, MPI_COMM_WORLD);
     MPI_Type_free(&mpi_vector_C);
+
+    auto end = clock.now();
+    auto time = std::chrono::duration_cast<std::chrono::milliseconds> (end - start);
+    if (rank == 0) std::cout << time.count() << " ms\n";
 
     MPI_Barrier(MPI_COMM_WORLD);
     MPI_Finalize();
