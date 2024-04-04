@@ -33,11 +33,11 @@ int main(int argc, char** argv) {
 
     MPI_Init(NULL, NULL);
 
-    int rank, size;
+    int rank, grid_size;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    MPI_Comm_size(MPI_COMM_WORLD, &grid_size);
 
-    int result_of_check = check_parameters(A_num_rows, grid_num_rows, B_num_cols, grid_num_cols, size);
+    int result_of_check = check_parameters(A_num_rows, grid_num_rows, B_num_cols, grid_num_cols, grid_size);
     if (result_of_check != VALID) {
         if (rank == 0) print_error(result_of_check);
         MPI_Abort(MPI_COMM_WORLD, -1);
@@ -83,20 +83,46 @@ int main(int argc, char** argv) {
     std::unique_ptr<double> B_part(new double[B_num_rows * num_cols_for_each]);
 
     if (coords_in_grid[0] == 0) { // Проверяем, что процесс находится в первой строке
-        MPI_Datatype mpi_vector;
-        MPI_Type_vector(B_num_rows, num_cols_for_each, B_num_cols, MPI_DOUBLE, &mpi_vector);
-        MPI_Type_create_resized(mpi_vector, 0, num_cols_for_each * sizeof(double), &mpi_vector);
-        MPI_Type_commit(&mpi_vector);
+        MPI_Datatype mpi_vector_B;
+        MPI_Type_vector(B_num_rows, num_cols_for_each, B_num_cols, MPI_DOUBLE, &mpi_vector_B);
+        MPI_Type_create_resized(mpi_vector_B, 0, num_cols_for_each * sizeof(double), &mpi_vector_B);
+        MPI_Type_commit(&mpi_vector_B);
 
-        MPI_Scatter(B.get(), 1, mpi_vector, B_part.get(),
+        MPI_Scatter(B.get(), 1, mpi_vector_B, B_part.get(),
             B_num_rows * num_cols_for_each, MPI_DOUBLE, 0, cols_comm);
-        MPI_Type_free(&mpi_vector);
+        MPI_Type_free(&mpi_vector_B);
     }
 
     MPI_Bcast(B_part.get(), B_num_rows * num_cols_for_each, MPI_DOUBLE, 0, rows_comm);
 
     std::unique_ptr<double> C_part(new double[num_rows_for_each * num_cols_for_each]);
     multiply(A_part.get(), B_part.get(), num_rows_for_each, A_num_cols, B_num_rows, num_cols_for_each, C_part.get());
+
+    MPI_Datatype mpi_vector_C;
+    MPI_Type_vector(num_rows_for_each, num_cols_for_each, B_num_cols, MPI_DOUBLE, &mpi_vector_C);
+    MPI_Type_create_resized(mpi_vector_C, 0, num_cols_for_each * sizeof(double), &mpi_vector_C);
+    MPI_Type_commit(&mpi_vector_C);
+
+    std::unique_ptr<int> recv_counts(new int[grid_size]);
+    std::fill(recv_counts.get(), recv_counts.get() + grid_size, 1);
+
+    std::unique_ptr<int> displs(new int[grid_size]);
+    for (int i = 0; i < grid_num_rows; i++) {
+        displs.get()[i * grid_num_cols] = i * num_rows_for_each * grid_num_cols;
+        for (int j = 1; j < grid_num_cols; j++) {
+            int cur_index = i * grid_num_cols + j;
+            displs.get()[cur_index] = displs.get()[cur_index - 1] + recv_counts.get()[cur_index - 1];
+        }
+    }
+
+    std::unique_ptr<double> C;
+    if (rank == 0) {
+        C.reset(new double[A_num_rows * B_num_cols]);
+    }
+
+    MPI_Gatherv(C_part.get(), num_rows_for_each * num_cols_for_each, MPI_DOUBLE, C.get(), recv_counts.get(),
+        displs.get(), mpi_vector_C, 0, MPI_COMM_WORLD);
+    MPI_Type_free(&mpi_vector_C);
 
     MPI_Barrier(MPI_COMM_WORLD);
     MPI_Finalize();
