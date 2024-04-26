@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include "functions.h"
 
 void initialize(double *region, int num_layers, int rank, int size) {
@@ -20,10 +22,10 @@ void initialize(double *region, int num_layers, int rank, int size) {
     }
 }
 
-double calc_next_value(double *region, int x, int y, int z) {
-    static const double hx_sq = (Dx / (Nx - 1)) * (Dx / (Nx - 1));
-    static const double hy_sq = (Dy / (Ny - 1)) * (Dy / (Ny - 1));
-    static const double hz_sq = (Dz / (Nz - 1)) * (Dz / (Nz - 1));
+double calc_next_value(double const *region, int x, int y, int z) {
+    static const double hx_sq = ((double) Dx / (Nx - 1)) * ((double) Dx / (Nx - 1));
+    static const double hy_sq = ((double) Dy / (Ny - 1)) * ((double) Dy / (Ny - 1));
+    static const double hz_sq = ((double) Dz / (Nz - 1)) * ((double) Dz / (Nz - 1));
     static const double multiplier = 1 / (2 / hx_sq + 2 / hy_sq + 2 / hz_sq + a);
 
     double sum_prev =
@@ -35,15 +37,15 @@ double calc_next_value(double *region, int x, int y, int z) {
     return multiplier * sum_prev;
 }
 
-// static void print(int *region, int num_layers) {
-//     for (int z = 0; z < num_layers; z++) {
-//         for (int y = 0; y < Ny; y++) {
-//             for (int x = 0; x < Nx; x++) {
-//                 int index = z * Nx * Ny + y * Nx + x;
-//                 std::cout << region[index] << "\t";
-//             }
-//             std::cout << "\n";
-//         }
-//         std::cout << "============================================================================\n";
-//     }
-// }
+void print(double *region, int num_layers) {
+    for (int z = 0; z < num_layers; z++) {
+        for (int y = 0; y < Ny; y++) {
+            for (int x = 0; x < Nx; x++) {
+                int index = z * Nx * Ny + y * Nx + x;
+                printf("%8.4f ", region[index]);
+            }
+            std::cout << "\n";
+        }
+        std::cout << "============================================================================\n";
+    }
+}

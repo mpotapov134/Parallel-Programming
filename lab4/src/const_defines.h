@@ -1,9 +1,9 @@
 #ifndef CONST_DEFINES_LAB4_INCLUDED
 #define CONST_DEFINES_LAB4_INCLUDED
 
-#define Nx 10
-#define Ny 10
-#define Nz 10
+#define Nx 20
+#define Ny 20
+#define Nz 32
 
 #define x0 -1
 #define Dx 2
