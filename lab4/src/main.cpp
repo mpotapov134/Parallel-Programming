@@ -1,4 +1,5 @@
 #include <chrono>
+#include <cstring>
 #include <iostream>
 #include <memory>
 #include <mpi.h>
@@ -31,8 +32,17 @@ static double update_layer(double const *current_region, int layer_z, double *up
 static double update_core(double const *current_region, int num_layers, int rank,
         int size, double *updated_region) {
 
-    int start_layer = rank == 0 ? 1 : 2;
-    int end_layer = rank == size - 1 ? num_layers - 1 : num_layers - 2;
+    // Копируем границы области, которые никогда не изменяются
+    if (rank == 0) {
+        memcpy(updated_region, current_region, Nx * Ny * sizeof(double));
+    }
+    if (rank == size - 1) {
+        memcpy(updated_region + (num_layers - 1) * Nx * Ny,
+            current_region + (num_layers - 1) * Nx * Ny, Nx * Ny * sizeof(double));
+    }
+
+    int start_layer = 2;
+    int end_layer = num_layers - 2;
 
     double max_delta = 0;
     for (int layer_z = start_layer; layer_z < end_layer; layer_z++) {
@@ -64,8 +74,11 @@ int main(int argc, char **argv) {
     std::chrono::high_resolution_clock clock;
     auto start = clock.now();
 
+    int iter = 0;
+
     double max_delta = EPS;
     while (max_delta >= EPS) {
+        iter++;
         MPI_Request requests[4];
 
         // Отправляем "наверх" и получаем "сверху"
@@ -90,34 +103,22 @@ int main(int argc, char **argv) {
         if (rank != 0) {
             MPI_Wait(&requests[0], MPI_STATUS_IGNORE);
             MPI_Wait(&requests[1], MPI_STATUS_IGNORE);
-
-            if (num_layers >= 3) {
-                double layer_delta = update_layer(current_region.get(), 1, next_iter.get());
-                process_delta = layer_delta > process_delta ? layer_delta : process_delta;
-            }
         }
         if (rank != size - 1) {
             MPI_Wait(&requests[2], MPI_STATUS_IGNORE);
             MPI_Wait(&requests[3], MPI_STATUS_IGNORE);
-
-            if (num_layers >= 3) {
-                double layer_delta = update_layer(current_region.get(), num_layers - 2, next_iter.get());
-                process_delta = layer_delta > process_delta ? layer_delta : process_delta;
-            }
         }
 
-        // Копируем границы области, которые никогда не изменяются
-        if (rank == 0) {
-            memcpy(next_iter.get(), current_region.get(), Nx * Ny * sizeof(double));
+        if (num_layers >= 3) {
+            double layer_delta = update_layer(current_region.get(), num_layers - 2, next_iter.get());
+            process_delta = layer_delta > process_delta ? layer_delta : process_delta;
+            layer_delta = update_layer(current_region.get(), 1, next_iter.get());
+            process_delta = layer_delta > process_delta ? layer_delta : process_delta;
         }
-        if (rank == size - 1) {
-            memcpy(next_iter.get() + (num_layers - 1) * Nx * Ny,
-                current_region.get() + (num_layers - 1) * Nx * Ny, Nx * Ny * sizeof(double));
-        }
-
-        MPI_Allreduce(&process_delta, &max_delta, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 
         current_region.swap(next_iter);
+
+        MPI_Allreduce(&process_delta, &max_delta, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
     }
 
     auto end = clock.now();
@@ -125,6 +126,7 @@ int main(int argc, char **argv) {
     int64_t max_time;
     MPI_Allreduce(&time, &max_time, 1, MPI_LONG_LONG, MPI_MAX, MPI_COMM_WORLD);
     if (rank == 0) std::cout << max_time << " ms\n";
+    if (rank == 0) std::cout << iter << "\n";
 
     MPI_Barrier(MPI_COMM_WORLD);
     MPI_Finalize();

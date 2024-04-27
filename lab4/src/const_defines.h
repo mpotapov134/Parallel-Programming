@@ -1,8 +1,8 @@
 #ifndef CONST_DEFINES_LAB4_INCLUDED
 #define CONST_DEFINES_LAB4_INCLUDED
 
-#define Nx 24
-#define Ny 24
+#define Nx 10
+#define Ny 10
 #define Nz 32
 
 #define x0 -1
