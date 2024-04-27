@@ -2,6 +2,14 @@
 
 #include "functions.h"
 
+static double calc_border(int x, int y, int z) {
+    static const double hx = (double) Dx / (Nx - 1);
+    static const double hy = (double) Dy / (Ny - 1);
+    static const double hz = (double) Dz / (Nz - 1);
+    return (x0 + x * hx) * (x0 + x * hx) + (y0 + y * hy) * (y0 + y * hy) +
+        (z0 + z * hz) * (z0 + z * hz);
+}
+
 void initialize(double *region, int num_layers, int rank, int size) {
     for (int z = 0; z < num_layers; z++) {
         for (int y = 0; y < Ny; y++) {
@@ -13,7 +21,8 @@ void initialize(double *region, int num_layers, int rank, int size) {
                 // нижняя граница - последний слой последнего процесса
                 if ((rank == 0 && z == 0) || (rank == size - 1 && z == num_layers - 1) ||
                         y == 0 || y == Ny - 1 || x == 0 || x == Nx - 1) {
-                    region[index] = BORDER;
+                    int absolute_z = Nz / size * rank + z;
+                    region[index] = calc_border(x, y, absolute_z);
                 } else {
                     region[index] = START;
                 }
