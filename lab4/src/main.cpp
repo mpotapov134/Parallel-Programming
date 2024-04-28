@@ -118,7 +118,8 @@ int main(int argc, char **argv) {
 
         current_region.swap(next_iter);
 
-        MPI_Allreduce(&process_delta, &max_delta, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+        if (iter % 1000 == 0)
+            MPI_Allreduce(&process_delta, &max_delta, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
     }
 
     auto end = clock.now();
