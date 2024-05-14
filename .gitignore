@@ -1,3 +1,4 @@
 theory.c
 openmptest.sbatch
 lab2/exec/
+.vscode/

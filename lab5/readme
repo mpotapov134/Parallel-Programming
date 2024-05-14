@@ -1,0 +1,7 @@
+Laboratory work on multithreading with POSIX threads and MPI.
+Each of the MPI nodes is given a set of tasks to execute. The weight of each task is different and
+unknown in advance. Once the node has completed all of its tasks, it starts requesting tasks from
+other nodes in order to reduce idle time. Thus, the tasks are distributed among the nodes
+dynamically.
+Each process has two threads: one for performing calculations, and another for processing requests
+from other nodes. The tasks are stored in a thread-safe blocking queue, which both threads access.
