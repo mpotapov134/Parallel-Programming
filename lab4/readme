@@ -1,0 +1,2 @@
+Asynchronous parallel program for solving a differential equasion using the Jacobi method.
+MPI is used for parallelism; non-blocking operations were employed to increase efficiency.
